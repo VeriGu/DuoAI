@@ -1,0 +1,70 @@
+#lang ivy1.7
+
+type thread
+type ticket
+
+relation le(T:ticket, S:ticket)
+axiom le(X,X)
+axiom le(X, Y) & le(Y, Z) -> le(X, Z)
+axiom le(X, Y) & le(Y, X) -> X = Y
+axiom le(X, Y) | le(Y, X)
+individual zero:ticket
+axiom forall X. le(zero, X)
+
+relation pc1(T:thread)
+relation pc2(T:thread)
+relation pc3(T:thread)
+individual service: ticket
+individual next_ticket: ticket
+relation m(T:thread, S:ticket)  # use relation and not a function to be in EPR
+
+after init  {
+  pc1(T) := true;
+  pc2(T) := false;
+  pc3(T) := false;
+  service := zero;
+  next_ticket := zero;
+  m(T,K) := K = zero;
+}
+
+#definition succ(x: ticket, y:ticket) = (~le(y,x) & forall Z:ticket. ~le(Z,x) -> le(y,Z))
+
+
+action step12(t:thread, new_next_ticket:ticket ) = {
+    require (pc1(t));
+
+    require (~le(new_next_ticket,next_ticket) & forall Z:ticket. ~le(Z,next_ticket) -> le(new_next_ticket,Z));
+
+    m(t,K) := (K = next_ticket);
+
+    next_ticket := new_next_ticket;
+
+    pc1(t) := false;
+    pc2(t) := true;
+}
+
+action step23(t:thread, k:ticket ) = {
+    require (pc2(t));
+    require (m(t,k));
+    require le(k, (service));
+
+    pc2(t) := false;
+    pc3(t) := true;
+}
+
+action step31(t:thread, new_service:ticket ) = {
+    require (pc3(t));
+
+    require (~le(new_service,(service)) & forall Z:ticket. ~le(Z,(service)) -> le(new_service,Z));
+    service := new_service;
+
+    pc3(t) := false;
+    pc1(t) := true;
+}
+
+export step12
+export step23
+export step31
+
+# safety property
+invariant [1000000] pc3(T1) & pc3(T2) -> T1 = T2

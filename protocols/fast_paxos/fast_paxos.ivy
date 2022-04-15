@@ -1,0 +1,163 @@
+#lang ivy1.7
+
+# from Paxos Made EPR
+
+################################################################################
+#
+# Modules that should probably come from a standard library
+#
+################################################################################
+
+################################################################################
+#
+# Module for axiomatizing a total order
+#
+################################################################################
+
+module total_order(r) = {
+    axiom r(X,X)                        # Reflexivity
+    axiom r(X, Y) & r(Y, Z) -> r(X, Z)  # Transitivity
+    axiom r(X, Y) & r(Y, X) -> X = Y    # Anti-symmetry
+    axiom r(X, Y) | r(Y, X)             # Totality
+}
+
+
+################################################################################
+#
+# Types, relations and functions describing state of the network
+#
+################################################################################
+
+type round
+type value
+# classic quorums:
+type c_quorum
+# fast quorums:
+type f_quorum
+type node
+
+individual none: round
+relation le(X:round, Y:round)
+instantiate total_order(le)
+# some rounds are fast rounds:
+relation fast(R:round)
+
+relation c_member(N:node, Q:c_quorum)
+relation f_member(N:node, Q:f_quorum)
+# classic quorums intersect
+axiom exists N:node. c_member(N, Q1) & c_member(N, Q2)
+# a classic quorum and a two fast quorums intersect
+axiom exists N:node . c_member(N,Q1) & f_member(N,Q2) & f_member(N, Q3)
+
+relation one_a(R:round)
+relation one_b(N:node, R:round)
+relation one_b_max_vote(N:node, R1:round, R2:round, V:value)
+relation proposal(R:round, V:value) # 2a
+relation vote(N:node, R:round, V:value) # 2b
+relation decision(N:node,R:round, V:value) # got 2b from a c_quorum
+relation left_rnd(N:node, R:round) # left_rnd(n,r) means node n is no longer in round r
+relation any_msg(R:round) # an "any" message in a fast round.
+
+after init {
+    one_a(R) := false;
+    one_b(N,R) := false;
+    one_b_max_vote(N,R1,R2,V) := false;
+    proposal(R,V) := false;
+    vote(N,R,V) := false;
+    decision(N,R,V) := false;
+    left_rnd(N, R) := false;
+    any_msg(R) := false;
+}
+
+action send_1a(r:round) = {
+    # a proposer selects a round and sends a message asking nodes to join the round
+    require r ~= none;
+    one_a(r) := true
+}
+
+action join_round(n:node, r:round, maxr:round, v:value)  = {
+    # receive 1a and answer with 1b
+    require r ~= none;
+    require one_a(r);
+    require ~left_rnd(n,r);
+    # find the maximal vote in a round less than r
+    require ((maxr = none & forall MAXR:round,V:value. ~(~le(r,MAXR) & vote(n,MAXR,V))) |
+            (maxr ~= none & ~le(r,maxr) & vote(n,maxr,v) &
+            (forall MAXR:round,V:value. (~le(r,MAXR) & vote(n,MAXR,V)) -> le(MAXR,maxr))
+           ));
+    # send the 1b message
+    one_b_max_vote(n,r,maxr,v) := true;
+    one_b(n,r) := true;
+    left_rnd(n,R) := left_rnd(n,R) | ~le(r,R)
+}
+
+action propose(r:round, q:c_quorum, maxr:round, v:value, v2:value) = {
+    # receive a quorum of 1b's and send a 2a (proposal)
+    require r ~= none;
+    require ~proposal(r,V) & ~any_msg(r);
+
+    # NOTE(travis): this line was fixed, R -> r
+    #require forall N:node. c_member(N, q) -> one_b(N,R); # rewritten
+    require forall N:node. c_member(N, q) -> one_b(N,r); # rewritten
+
+    # find the maximal max_vote in the quorum (rewritten)
+    require ((maxr = none & forall N:node,MAXR:round,V:value. ~(c_member(N, q) & ~le(r,MAXR) & vote(N,MAXR,V))) |
+            (maxr ~= none &
+            (exists N:node. c_member(N, q) & ~le(r,maxr) & vote(N,maxr,v)) &
+            (forall N:node,MAXR:round,V:value. (c_member(N, q) & ~le(r,MAXR) & vote(N,MAXR,V)) -> le(MAXR,maxr))
+            ));
+    require maxr ~= none ->  ((exists F:f_quorum. forall N:node. ~(f_member(N,F) & c_member(N,q) & ~vote(N,maxr,v2))) |
+                (v2 = v &
+                 forall V2:value, F:f_quorum. exists N:node. f_member(N,F) & c_member(N,q) & ~vote(N,maxr,V2)
+                ));
+    if maxr ~= none {
+        # a vote was reported in round maxr, and there are no votes in higher rounds.
+        # find if there's a value voted for by an intersection of q with a fast quorum (rewritten)
+        proposal(r, v2) := true;
+    } else {
+        # no vote was reported at all.
+        if fast(r) {
+            # fast round, send any_msg
+            any_msg(r) := true;
+        } else {
+            # classic round, propose arbitrary value
+            proposal(r, v) := true;
+        }
+    }
+}
+
+action cast_vote(n:node, v:value, r:round) = {
+    # receive a 2a or "any" message and send 2b
+    require r ~= none;
+    require ~left_rnd(n, r);
+    require ~vote(n, r, V);
+    # vote for a proposal, or vote for anything if there is an "any" message.
+    require proposal(r, v) | any_msg(r);
+    vote(n, r, v) := true
+}
+
+action c_decide(n:node, r:round, v:value, q:c_quorum) = {
+    # get 2b from a c_quorum
+    require r ~= none;
+    require ~fast(r);
+    require c_member(N, q) -> vote(N, r, v);
+    decision(n, r, v) := true
+}
+
+action f_decide(n:node, r:round, v:value, q:f_quorum) = {
+    # get 2b from a f_quorum
+    require r ~= none;
+    require fast(r);
+    require f_member(N, q) -> vote(N, r, v);
+    decision(n, r, v) := true
+}
+
+export send_1a
+export join_round
+export propose
+export cast_vote
+export c_decide
+export f_decide
+
+# safety property:
+invariant [1000000] decision(N1,R1,V1) & decision(N2,R2,V2) -> V1 = V2

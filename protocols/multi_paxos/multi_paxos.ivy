@@ -1,0 +1,149 @@
+#lang ivy1.7
+
+# from Paxos Made EPR
+
+################################################################################
+#
+# Modules that should probably come from a standard library
+#
+################################################################################
+
+################################################################################
+#
+# Module for axiomatizing a total order
+#
+################################################################################
+
+module total_order(r) = {
+    axiom r(X,X)                        # Reflexivity
+    axiom r(X, Y) & r(Y, Z) -> r(X, Z)  # Transitivity
+    axiom r(X, Y) & r(Y, X) -> X = Y    # Anti-symmetry
+    axiom r(X, Y) | r(Y, X)             # Totality
+}
+
+
+################################################################################
+#
+# Types, relations and functions describing state of the network
+#
+################################################################################
+
+type votemap
+type inst
+type round
+type value
+type quorum
+type node
+
+individual none: round
+relation le(X:round, Y:round)
+instantiate total_order(le)
+
+relation member(N:node, Q:quorum)
+axiom forall Q1:quorum, Q2:quorum. exists N:node. member(N, Q1) & member(N, Q2)
+
+relation one_a(R:round)
+relation one_b_msg(N:node, R1:round, M:votemap)
+relation left_round(N:node, R:round)
+relation joined_round(N:node, R:round)
+relation proposal(I:inst, R:round, V:value) # 2a
+relation active(R:round)  # round R has received a quorum of 1b and can now propose new values
+relation vote(N:node, I:inst, R:round, V:value) # 2b
+relation decision(N:node, I:inst, R:round, V:value) # got 2b from a quorum
+function maxr(M:votemap,I:inst) : round
+function maxv(M:votemap,I:inst) : value
+
+after init {
+    one_a(R) := false;
+    one_b_msg(N,R1,M) := false;
+    left_round(N,R) := false;
+    joined_round(N,R) := false;
+    proposal(I,R,V) := false;
+    vote(N,I,R,V) := false;
+    decision(N,I,R,V) := false;
+    active(R) := false;
+}
+
+
+action send_1a(r:round) = {
+    # a proposer selects a round and sends a message asking nodes to join the round
+    require r ~= none;
+    one_a(r) := true
+}
+
+
+action join_round(n:node, r:round, m:votemap) = {
+    # receive 1a and answer with 1b
+    require r ~= none;
+    require one_a(r);
+    require ~left_round(n,r);
+
+    # find the maximal vote in a round less than r, for all instances
+    require forall I:inst. (
+        ( maxr(m,I) = none & forall R,V. ~(vote(n,I,R,V) & ~le(r,R)) ) |
+        ( vote(n,I,maxr(m,I),maxv(m,I)) & ~le(r,maxr(m,I)) &
+          forall R,V. vote(n,I,R,V) & ~le(r,R) -> le(R,maxr(m,I)) )
+    );
+    # send the 1b message
+    one_b_msg(n,r,m) := true;
+    # update code:
+    left_round(n,R) := left_round(n,R) | ~le(r,R);
+    joined_round(n,r) := true
+}
+
+action receive_join_acks(r:round, q:quorum, m:votemap) = {
+    # receive a quorum of 1b's, activate round and propose for instances that have choosable values at lower rounds
+    require r ~= none;
+    require ~active(r); # this happens only once
+    require forall N:node. member(N, q) -> joined_round(N,r);
+
+    # find the maximal vote in the quorum for each instance, according to votes themselves
+    require forall I:inst. (
+        ( maxr(m,I) = none &
+          forall N,R,V. ~(member(N, q) & ~le(r,R) & vote(N,I,R,V)) ) |
+        ( (exists N,R,V.  member(N, q) & ~le(r,R) & vote(N,I,R,V) & R = maxr(m,I) & V = maxv(m,I)) &
+          (forall N,R,V.  member(N, q) & ~le(r,R) & vote(N,I,R,V) -> le(R,maxr(m,I))) )
+    );
+    # activate round
+    active(r) := true;
+    # propose all choosable values
+    proposal(I, r, V) := proposal(I, r, V) | (maxr(m,I) ~= none & V = maxv(m,I))
+}
+
+
+action propose(r:round, i:inst, v:value) = {
+    # propose a new arbitrary value an available instance in an active round
+    require r ~= none;
+    require active(r);
+    require ~proposal(i, r, V);
+    proposal(i, r, v) := true
+}
+
+
+action cast_vote(n:node, v:value, r:round, i:inst) = {
+    # receive a 2a and send 2b
+    require r ~= none;
+    require ~left_round(n,r);
+    require proposal(i, r, v);
+    vote(n, i, r, v) := true
+}
+
+
+action decide(n:node, r:round, v:value, q:quorum, i:inst) = {
+    # get 2b from a quorum
+    require r ~= none;
+    require member(N, q) -> vote(N, i, r, v);
+    decision(n, i, r, v) := true
+}
+
+
+export send_1a
+export join_round
+export receive_join_acks
+export propose
+export cast_vote
+export decide
+
+
+# safety property:
+invariant [1000000] decision(N1,I,R1,V1) & decision(N2,I,R2,V2) -> V1 = V2
