@@ -4,6 +4,8 @@ Duo is an automated tool to formally verify distributed protocols (e.g., Paxos) 
 
 ## Installation
 
+Duo runs on Linux. It has been tested on Ubuntu 18.04.3 LTS, Ubuntu 20.04.1 LTS, and Amazon Linux 2.
+
 1. Download and install Anaconda from https://www.anaconda.com/products/individual. Use version >= Python 3.8.
 
 2. The Ivy verification tool only works on Python 2. Install it by 
@@ -59,7 +61,7 @@ If a protocol is solved by bottom-up refinement (e.g., ```flexible_paxos```), th
 ## Structure  
 
 - protocols/:
-  The 27 distributed protocols in Ivy. 
+  The 27 distributed protocols in Ivy. The description of each protocol can be found [here](protocols/protocol_description.md).
   
 - src-py/:
   The python source code for protocol simulation
