@@ -19,7 +19,7 @@ def template_increase_to_max_retry(curr_template_increase, is_forall_only):
     else:
         return max(curr_template_increase, 2)
 
-class Duo:
+class DuoAI:
     def __init__(self, PROBLEM):
         self.global_start_time = time.time()
         self.PROBLEM = PROBLEM
@@ -65,7 +65,7 @@ class Duo:
                 print(
                     'translate.py fails to parse and translate the input Ivy file. Please use $ivy_check PROTOCOL.ivy to '
                     'check if the Ivy file has the correct syntax and grammar. If it does, the problem may come from the '
-                    'limitation of Duo, which does not support all Ivy features. Exiting...')
+                    'limitation of DuoAI, which does not support all Ivy features. Exiting...')
                 os._exit(-1)
             num_process = len(os.listdir('auto_samplers/{}'.format(PROBLEM)))
             running_simulation_procs = []
@@ -104,7 +104,7 @@ class Duo:
     def cleanup_and_exit(self):
         total_time = time.time() - self.global_start_time
         kill_child_processes()
-        print('Duo runtime: {:.3f}s'.format(total_time))
+        print('DuoAI runtime: {:.3f}s'.format(total_time))
         os._exit(0)
 
     def run(self):
@@ -139,5 +139,5 @@ if __name__ == '__main__':
     atexit.register(kill_child_processes)
     assert len(sys.argv) >= 2
     PROBLEM = sys.argv[1]
-    Duo_obj = Duo(PROBLEM)
-    Duo_obj.run()
+    DuoAI_obj = DuoAI(PROBLEM)
+    DuoAI_obj.run()

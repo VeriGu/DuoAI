@@ -1,4 +1,4 @@
-Here we briefly describe the 27 distributed protocols evaluated by Duo. Their sources are referenced in the paper.
+Here we briefly describe the 27 distributed protocols evaluated by DuoAI. Their sources are referenced in the paper.
 
 - `chord_ring_maintenance`: Implements a distributed hashtable. Nodes are organized in a dynamic ring, where each node can join or leave freely, leading to the restructuring of the ring. The protocol guarantees that the ring always satisfies some connectivity property.
 

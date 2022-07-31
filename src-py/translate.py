@@ -901,7 +901,7 @@ def parse_action(action_str, action_buffer):
                     newlines.append(line)
                 else:
                     if line_number < len(lines) - 1:
-                        print('Cannot parse action {}. Duo only allows require/assume/assert statements to spread multiple lines. Transition must be single-lined and end with a semicolon.'.format(action_name))
+                        print('Cannot parse action {}. DuoAI only allows require/assume/assert statements to spread multiple lines. Transition must be single-lined and end with a semicolon.'.format(action_name))
                         exit(-1)
                     else:
                         curr_buffer = line
@@ -1317,7 +1317,7 @@ def get_func_name_line():
 
 def calc_template_sizes():
     # the user is expected to specify a minimum instance (i.e., initial template) to begin with
-    # if not, Duo estimates it based on relation arity and heuristics
+    # if not, DuoAI estimates it based on relation arity and heuristics
     for relation, type_names in relations.items():
         occurrences = Counter(type_names)
         for type_name, count in occurrences.items():
@@ -1541,7 +1541,7 @@ def enumerate_predicates():
                 continue
             vars_list_list = []
             if len(relation_signature) >= 4 and relation_signature.count(relation_signature[0]) == len(relation_signature):
-                print('Warning! Relation {} has same-type arity {}. Duo has a known limitation dealing with high-arity relations of one type. '
+                print('Warning! Relation {} has same-type arity {}. DuoAI has a known limitation dealing with high-arity relations of one type. '
                     'Additional heuristics are applied to reduce the search space, but there is still a decent chance of timeout.'.format(relation_name, len(relation_signature)))
                 vars_list_list.append([vars_each_type_curr_size[relation_signature[0]][0]])
                 vars_list_list.append(vars_each_type_curr_size[relation_signature[1]][:2])

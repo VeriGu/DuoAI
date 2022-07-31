@@ -1,10 +1,10 @@
-# Duo: Fast, Automated Inference of Inductive Invariants for Verifying Distributed Protocols
+# DuoAI: Fast, Automated Inference of Inductive Invariants for Verifying Distributed Protocols
 
-Duo is an automated tool to formally verify distributed protocols (e.g., Paxos) by inferring inductive invariants.
+DuoAI is an automated tool to formally verify distributed protocols (e.g., Paxos) by inferring inductive invariants.
 
 ## Installation
 
-Duo runs on Linux. It has been tested on Ubuntu 18.04.3 LTS, Ubuntu 20.04.1 LTS, and Amazon Linux 2.
+DuoAI runs on Linux. It has been tested on Ubuntu 18.04.3 LTS, Ubuntu 20.04.1 LTS, and Amazon Linux 2.
 
 1. Download and install Anaconda from https://www.anaconda.com/products/individual. Use version >= Python 3.8.
 
@@ -41,10 +41,10 @@ Duo runs on Linux. It has been tested on Ubuntu 18.04.3 LTS, Ubuntu 20.04.1 LTS,
 
 ## Usage
 
-Given a distributed protocol, ```python Duo.py PROTOCOL_NAME``` simulates the protocol, enumerate the invariants and applies top-down/bottom-up refinement until an inductive invariant is found. For example,
+Given a distributed protocol, ```python DuoAI.py PROTOCOL_NAME``` simulates the protocol, enumerate the invariants and applies top-down/bottom-up refinement until an inductive invariant is found. For example,
 
 ```
-$ python Duo.py client_server_db_ae
+$ python DuoAI.py client_server_db_ae
 ```
 
 As suggested on the screen, the inductive invariant is written to ```outputs/client_server_db_ae/client_server_db_ae_e0_inv_main.ivy```. 
@@ -79,5 +79,5 @@ If a protocol is solved by bottom-up refinement (e.g., ```flexible_paxos```), th
   - CounterexampleHandler.h/cpp: parse the counterexamples given by Ivy and filter candidate invariants accordingly
   - Helper.h/cpp: perform formula and graph transformations which is used by Solver and InvRefiner
 
-- Duo.py:
+- DuoAI.py:
   The top-level wrapper. Manage multiple simulation and refinement processes running in parallel.
