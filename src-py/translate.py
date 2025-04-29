@@ -801,7 +801,7 @@ def parse_assume_block(tainted_exprs, assume_stmts):
         lines.append('# 2) modify the while loop below to make sampling more efficient')
         lines.append('while True:')
         for assume_stmt in assume_stmts:
-            python_bexpr, _ = ivy_expr_to_python_expr(assume_stmt, evaluate_to_one_boolean=False)
+            python_bexpr, _ = ivy_expr_to_python_expr(assume_stmt, evaluate_to_one_boolean=True)
             lines.append('\tif not ({}):'.format(python_bexpr))
             for ivy_expr in tainted_exprs:
                 assignment_lines = translate_assignment(ivy_expr, '*')
@@ -1292,12 +1292,15 @@ def parse_ivy_file(ivy_file):
     export_line_nums = sorted(list(export_line_num_dict.values()))
     assert len(export_line_nums) > 0   # there must be at least one exported actions
     for action_name, export_line_num in export_line_num_dict.items():
-        curr_export_line_nums = export_line_nums.copy()
-        curr_export_line_nums.remove(export_line_num)
-        new_lines = lines[: curr_export_line_nums[0]]
-        for i in range(len(curr_export_line_nums) - 1):
-            new_lines.extend(lines[curr_export_line_nums[i]+1: curr_export_line_nums[i+1]])
-        new_lines.extend(lines[curr_export_line_nums[-1]+1:])
+        if len(export_line_nums) == 1:  # only one exported action
+            new_lines = lines
+        else:
+            curr_export_line_nums = export_line_nums.copy()
+            curr_export_line_nums.remove(export_line_num)
+            new_lines = lines[: curr_export_line_nums[0]]
+            for i in range(len(curr_export_line_nums) - 1):
+                new_lines.extend(lines[curr_export_line_nums[i]+1: curr_export_line_nums[i+1]])
+            new_lines.extend(lines[curr_export_line_nums[-1]+1:])
         with open('../src-c/runtime/{}/single_export/{}_{}.ivy'.format(PROBLEM, PROBLEM, action_name), 'w') as single_export_file:
             single_export_file.writelines(new_lines)
 
