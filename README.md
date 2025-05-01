@@ -31,6 +31,7 @@ DuoAI runs on Linux. It has been tested on Ubuntu 18.04.3 LTS, Ubuntu 20.04.1 LT
     $ conda activate base
     $ conda install numpy scipy pandas
     ```
+   Note: DuoAI was tested with numpy 1.20.2, scipy 1.6.2, and pandas 1.2.4.
 
 5. Build C++ source files
     ```
